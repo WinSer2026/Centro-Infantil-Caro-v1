@@ -13,13 +13,17 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let app: FirebaseApp | undefined;
-let db: Firestore;
-let auth: Auth;
+let db: Firestore | any = null;
+let auth: Auth | any = null;
 
-if (firebaseConfig.apiKey) {
-  app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-  db = getFirestore(app);
-  auth = getAuth(app);
+if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
+  try {
+    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
+  } catch (error) {
+    console.error("Erro ao inicializar Firebase:", error);
+  }
 }
 
 export { app, db, auth };
