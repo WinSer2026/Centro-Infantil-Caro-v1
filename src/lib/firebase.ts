@@ -1,20 +1,35 @@
 import Gun from 'gun';
+import 'gun/lib/then.js';
 
-// Inicializar GunDB com relays públicos gratuitos para sincronização
-const gun = Gun({
-  peers: [
-    'https://gun-manhattan.herokuapp.com/gun',
-    'https://relay.peer.ooo/gun'
-  ]
-});
+let gun: any;
 
-// Mantemos os nomes antigos para não quebrar os imports, mas usamos Gun por baixo
+if (typeof window !== 'undefined') {
+  // Inicializar GunDB apenas no cliente
+  gun = Gun({
+    peers: [
+      'https://gun-manhattan.herokuapp.com/gun',
+      'https://relay.peer.ooo/gun'
+    ],
+    localStorage: true
+  });
+} else {
+  // Mock básico para o servidor (SSR)
+  gun = {
+    get: () => gun,
+    map: () => gun,
+    put: () => gun,
+    on: () => {},
+    once: () => {}
+  };
+}
+
 const db = gun;
 const auth = {
-  // Mock de autenticação simples que não precisa de servidor
   currentUser: { uid: 'temporary-user' },
   onAuthStateChanged: (callback: any) => {
-    callback({ uid: 'temporary-user' });
+    if (typeof window !== 'undefined') {
+      callback({ uid: 'temporary-user' });
+    }
     return () => {};
   }
 };
