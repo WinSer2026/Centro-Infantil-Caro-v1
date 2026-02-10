@@ -83,7 +83,6 @@ export default function AlunosPage() {
             padding: '0.75rem 1rem',
             background: 'var(--background)',
             border: '1px solid var(--border)',
-            borderLines: 'var(--radius-md)',
             color: 'var(--text-secondary)',
             fontWeight: 500,
             borderRadius: 'var(--radius-md)'
