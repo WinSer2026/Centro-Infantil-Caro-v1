@@ -1,79 +1,63 @@
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  getDocs, 
-  query, 
-  where,
-  onSnapshot,
-  DocumentData,
-  QueryConstraint
-} from 'firebase/firestore';
 import { db } from '../firebase';
 
 export const firestoreService = {
   // Get all documents from a collection
   async getAll(collectionName: string) {
-    if (!db) {
-      console.warn(`Firestore não inicializado. Não é possível buscar ${collectionName}.`);
-      return [];
-    }
-    const colRef = collection(db, collectionName);
-    const snapshot = await getDocs(colRef);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return new Promise<any[]>((resolve) => {
+      const results: any[] = [];
+      db.get(collectionName).map().once((data: any, id: string) => {
+        if (data) {
+          results.push({ id, ...data });
+        }
+      });
+      // GunDB é assíncrono e baseado em stream, usamos um timeout curto para "resolver" a lista inicial
+      setTimeout(() => resolve(results), 500);
+    });
   },
 
   // Add a new document
   async add(collectionName: string, data: any) {
-    if (!db) {
-      console.error(`Firestore não inicializado. Não é possível adicionar em ${collectionName}.`);
-      return null;
-    }
-    const colRef = collection(db, collectionName);
-    const docRef = await addDoc(colRef, {
+    const id = Math.random().toString(36).substr(2, 9);
+    const docRef = db.get(collectionName).get(id);
+    await docRef.put({
       ...data,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     });
-    return docRef.id;
+    return id;
   },
 
   // Update a document
   async update(collectionName: string, id: string, data: any) {
-    if (!db) {
-      console.error(`Firestore não inicializado. Não é possível atualizar ${collectionName}/${id}.`);
-      return;
-    }
-    const docRef = doc(db, collectionName, id);
-    await updateDoc(docRef, {
+    const docRef = db.get(collectionName).get(id);
+    await docRef.put({
       ...data,
-      updatedAt: new Date(),
+      updatedAt: new Date().toISOString(),
     });
   },
 
   // Delete a document
   async delete(collectionName: string, id: string) {
-    if (!db) {
-      console.error(`Firestore não inicializado. Não é possível deletar ${collectionName}/${id}.`);
-      return;
-    }
-    const docRef = doc(db, collectionName, id);
-    await deleteDoc(docRef);
+    db.get(collectionName).get(id).put(null);
   },
 
   // Real-time listener for a collection
-  subscribe(collectionName: string, callback: (data: any[]) => void, constraints: QueryConstraint[] = []) {
-    if (!db) {
-      console.warn(`Firestore não inicializado. Real-time listener desativado para ${collectionName}.`);
-      return () => {}; // No-op unsubscribe
-    }
-    const colRef = collection(db, collectionName);
-    const q = query(colRef, ...constraints);
-    return onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      callback(data);
+  subscribe(collectionName: string, callback: (data: any[]) => void, constraints: any[] = []) {
+    const resultsMap = new Map();
+    
+    const ref = db.get(collectionName).map();
+    
+    const listener = ref.on((data: any, id: string) => {
+      if (data === null) {
+        resultsMap.delete(id);
+      } else {
+        resultsMap.set(id, { id, ...data });
+      }
+      callback(Array.from(resultsMap.values()));
     });
+
+    return () => {
+      // GunDB não tem um "unsubscribe" direto da mesma forma, mas o on() pode ser gerenciado
+    };
   }
 };
